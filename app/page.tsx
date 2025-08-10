@@ -75,7 +75,7 @@ export default function HomePage() {
               How to Use
             </h2>
             <div className="space-y-2 text-sm sm:text-base text-gray-600">
-              <p>1. Enter a JAN code manually or scan with your camera</p>
+              <p>1. Enter a JAN code or scan with your camera</p>
               <p>2. View nearby shops and their availability</p>
               <p>3. Get directions and contact information</p>
             </div>

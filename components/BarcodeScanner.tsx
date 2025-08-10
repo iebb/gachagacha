@@ -75,12 +75,7 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     }
   };
 
-  const handleManualInput = () => {
-    const barcode = prompt("Enter JAN code manually:");
-    if (barcode && barcode.trim()) {
-      onScan(barcode.trim());
-    }
-  };
+
 
   return (
     <div className="w-full">
@@ -90,9 +85,6 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
             <Camera className="w-12 h-12 sm:w-16 sm:w-16 mx-auto mb-2" />
             <p className="text-sm">{error}</p>
           </div>
-          <button onClick={handleManualInput} className="btn-primary w-full">
-            Enter JAN Code Manually
-          </button>
         </div>
       ) : !isScanning ? (
         <div className="text-center p-4 sm:p-6">
@@ -103,12 +95,6 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           <div className="space-y-2">
             <button onClick={startScanner} className="btn-primary w-full">
               Start Camera Scanner
-            </button>
-            <button
-              onClick={handleManualInput}
-              className="btn-secondary w-full"
-            >
-              Enter JAN Code Manually
             </button>
           </div>
         </div>
@@ -148,9 +134,6 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
             Position the JAN code within the frame to scan automatically
           </p>
-          <button onClick={handleManualInput} className="btn-secondary w-full">
-            Enter JAN Code Manually
-          </button>
         </div>
       )}
     </div>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import BarcodeScanner from "../../../components/BarcodeScanner";
 import ShopList from "../../../components/ShopList";
 
 interface Shop {
@@ -67,56 +66,20 @@ export default function JanCodePage() {
     }
   };
 
-  const handleScan = (scannedCode: string) => {
-    setBarcode(scannedCode);
-    searchShops(scannedCode);
-  };
 
-  const handleManualSearch = () => {
-    if (barcode.trim()) {
-      searchShops(barcode.trim());
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
       <div className="container mx-auto px-4 py-6 sm:py-8">
-        {/* Search Section */}
+        {/* JAN Code Display */}
         <div className="max-w-2xl mx-auto mb-6 sm:mb-8">
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
-            <div className="flex-1">
-              <label
-                htmlFor="barcode"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                JAN Code
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  id="barcode"
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder="4582769..."
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base"
-                  onKeyPress={(e) => e.key === "Enter" && handleManualSearch()}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={13}
-                />
-                <button
-                  onClick={handleManualSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary-600 hover:text-primary-700"
-                >
-                  Search
-                </button>
-              </div>
-            </div>
-
-            {/* Scanner */}
-            <div className="mt-4">
-              <BarcodeScanner onScan={handleScan} />
-            </div>
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 text-center">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+              JAN Code
+            </h2>
+            <p className="text-2xl sm:text-3xl font-mono font-bold text-primary-600">
+              {barcode}
+            </p>
           </div>
         </div>
 

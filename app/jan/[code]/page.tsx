@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import ShopList from "../../../components/ShopList";
 
 interface Shop {
@@ -21,6 +21,7 @@ interface Shop {
 
 export default function JanCodePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const [barcode, setBarcode] = useState<string>("");
   const [shops, setShops] = useState<Shop[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,10 +40,17 @@ export default function JanCodePage() {
     setIsLoading(true);
     setError("");
 
+    // Get location from URL parameters if available
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('lng');
+    
     try {
-      const response = await fetch(
-        `/api/search-shops?barcode=${encodeURIComponent(code.trim())}`,
-      );
+      let apiUrl = `/api/search-shops?barcode=${encodeURIComponent(code.trim())}`;
+      if (lat && lng) {
+        apiUrl += `&lat=${lat}&lng=${lng}`;
+      }
+      
+      const response = await fetch(apiUrl);
 
       if (!response.ok) {
         throw new Error("Failed to search shops");

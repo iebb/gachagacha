@@ -1,23 +1,83 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, MapPin } from "lucide-react";
 import BarcodeScanner from "../components/BarcodeScanner";
 
 export default function HomePage() {
   const [barcode, setBarcode] = useState("");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState<string>("");
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const router = useRouter();
+
+  // Get user location on component mount
+  useEffect(() => {
+    getUserLocation();
+  }, []);
+
+  const getUserLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    setIsGettingLocation(true);
+    setLocationError("");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ lat: latitude, lng: longitude });
+        setIsGettingLocation(false);
+        console.log("Location obtained:", { lat: latitude, lng: longitude });
+      },
+      (error) => {
+        setIsGettingLocation(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setLocationError("Location access denied. Please enable location services.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setLocationError("Location information unavailable.");
+            break;
+          case error.TIMEOUT:
+            setLocationError("Location request timed out.");
+            break;
+          default:
+            setLocationError("An unknown error occurred getting location.");
+            break;
+        }
+        console.error("Location error:", error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    );
+  };
 
   const handleSearch = () => {
     if (barcode.trim()) {
-      router.push(`/jan/${barcode.trim()}`);
+      // Include location in the URL if available
+      if (userLocation) {
+        router.push(`/jan/${barcode.trim()}?lat=${userLocation.lat}&lng=${userLocation.lng}`);
+      } else {
+        router.push(`/jan/${barcode.trim()}`);
+      }
     }
   };
 
   const handleScan = (scannedCode: string) => {
     setBarcode(scannedCode);
-    router.push(`/jan/${scannedCode}`);
+    // Include location in the URL if available
+    if (userLocation) {
+      router.push(`/jan/${scannedCode}?lat=${userLocation.lat}&lng=${userLocation.lng}`);
+    } else {
+      router.push(`/jan/${scannedCode}`);
+    }
   };
 
   return (
@@ -32,6 +92,38 @@ export default function HomePage() {
             Scan a JAN barcode to find the nearest shops offering your favorite
             gacha items
           </p>
+        </div>
+
+        {/* Location Status */}
+        <div className="max-w-2xl mx-auto mb-4">
+          <div className="bg-white rounded-lg shadow-md p-3 sm:p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-700">
+                  {isGettingLocation ? "Getting your location..." : 
+                   userLocation ? "Location: Enabled" : 
+                   locationError ? "Location: Error" : "Location: Not set"}
+                </span>
+              </div>
+              {!userLocation && !isGettingLocation && (
+                <button
+                  onClick={getUserLocation}
+                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  Enable Location
+                </button>
+              )}
+            </div>
+            {locationError && (
+              <p className="text-xs text-red-600 mt-1">{locationError}</p>
+            )}
+            {userLocation && (
+              <p className="text-xs text-green-600 mt-1">
+                Coordinates: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Search Section */}
@@ -75,9 +167,10 @@ export default function HomePage() {
               How to Use
             </h2>
             <div className="space-y-2 text-sm sm:text-base text-gray-600">
-              <p>1. Enter a JAN code or scan with your camera</p>
-              <p>2. View nearby shops and their availability</p>
-              <p>3. Get directions and contact information</p>
+              <p>1. Enable location access to find nearby shops</p>
+              <p>2. Enter a JAN code or scan with your camera</p>
+              <p>3. View nearby shops and their availability</p>
+              <p>4. Get directions and contact information</p>
             </div>
           </div>
         </div>

@@ -20,10 +20,21 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
   const startScanner = async () => {
     try {
-      if (!videoRef.current) return;
+      console.log("Starting scanner...");
+      setError("");
+      
+      if (!videoRef.current) {
+        setError("Video element not found");
+        return;
+      }
 
-      codeReaderRef.current = new BrowserMultiFormatReader();
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setError("Camera access not supported in this browser");
+        return;
+      }
 
+      console.log("Requesting camera access...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
@@ -32,37 +43,63 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         },
       });
 
+      console.log("Camera access granted, setting up video...");
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setIsScanning(true);
-        setError("");
+        
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          console.log("Video metadata loaded, starting scanner...");
+          
+          // Create the code reader instance
+          codeReaderRef.current = new BrowserMultiFormatReader();
+          
+          if (codeReaderRef.current) {
+            codeReaderRef.current.decodeFromVideoDevice(
+              null,
+              videoRef.current!,
+              (result: Result | null, error: any) => {
+                if (result) {
+                  console.log("Barcode detected:", result.getText());
+                  onScan(result.getText());
+                  stopScanner();
+                }
+                if (error && error.name !== "NotFoundException") {
+                  console.error("Scanning error:", error);
+                }
+              },
+            );
+          }
+        };
 
-        // Start scanning
-        if (codeReaderRef.current) {
-          codeReaderRef.current.decodeFromVideoDevice(
-            null,
-            videoRef.current,
-            (result: Result | null, error: any) => {
-              if (result) {
-                onScan(result.getText());
-                stopScanner();
-              }
-              if (error && error.name !== "NotFoundException") {
-                console.error("Scanning error:", error);
-              }
-            },
-          );
-        }
+        // Handle video errors
+        videoRef.current.onerror = (e) => {
+          console.error("Video error:", e);
+          setError("Video playback error");
+        };
       }
     } catch (err) {
-      setError(
-        "Camera access denied. Please allow camera access to scan barcodes.",
-      );
       console.error("Camera error:", err);
+      if (err instanceof Error) {
+        if (err.name === "NotAllowedError") {
+          setError("Camera access denied. Please allow camera access to scan barcodes.");
+        } else if (err.name === "NotFoundError") {
+          setError("No camera found on this device.");
+        } else if (err.name === "NotReadableError") {
+          setError("Camera is already in use by another application.");
+        } else {
+          setError(`Camera error: ${err.message}`);
+        }
+      } else {
+        setError("Failed to access camera. Please try again.");
+      }
     }
   };
 
   const stopScanner = () => {
+    console.log("Stopping scanner...");
     if (codeReaderRef.current) {
       codeReaderRef.current.reset();
       codeReaderRef.current = null;
@@ -70,26 +107,34 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped track:", track.kind);
+      });
+      videoRef.current.srcObject = null;
       setIsScanning(false);
     }
   };
-
-
 
   return (
     <div className="w-full">
       {error ? (
         <div className="text-center p-4 sm:p-6">
           <div className="text-red-500 mb-4">
-            <Camera className="w-12 h-12 sm:w-16 sm:w-16 mx-auto mb-2" />
+            <Camera className="w-12 w-12 sm:w-16 sm:h-16 mx-auto mb-2" />
             <p className="text-sm">{error}</p>
           </div>
+          <button 
+            onClick={() => setError("")} 
+            className="btn-secondary text-sm"
+          >
+            Try Again
+          </button>
         </div>
       ) : !isScanning ? (
         <div className="text-center p-4 sm:p-6">
           <div className="mb-4">
-            <Camera className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 text-primary-600" />
+            <Camera className="w-12 w-12 sm:w-16 sm:h-16 mx-auto mb-2 text-primary-600" />
             <p className="text-sm text-gray-600">Ready to scan JAN codes</p>
           </div>
           <div className="space-y-2">

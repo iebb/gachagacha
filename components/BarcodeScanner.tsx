@@ -85,36 +85,41 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         videoRef.current.srcObject = streamRef.current
       }
       
-      // Wait for video to be ready
-      videoRef.current.onloadedmetadata = () => {
-        console.log("Video metadata loaded, starting scanner...")
-        
-        // Create the code reader instance
-        codeReaderRef.current = new BrowserMultiFormatReader()
-        
-        if (codeReaderRef.current && videoRef.current) {
-          codeReaderRef.current.decodeFromVideoDevice(
-            null,
-            videoRef.current,
-            (result: Result | null, error: any) => {
-              if (result) {
-                console.log("Barcode detected:", result.getText())
-                onScan(result.getText())
-                stopScanner()
-              }
-              if (error && error.name !== "NotFoundException") {
-                console.error("Scanning error:", error)
-              }
-            },
-          )
+      // Only set up scanner if it doesn't already exist
+      if (!codeReaderRef.current) {
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          console.log("Video metadata loaded, starting scanner...")
+          
+          // Create the code reader instance only if it doesn't exist
+          if (!codeReaderRef.current) {
+            codeReaderRef.current = new BrowserMultiFormatReader()
+          }
+          
+          if (codeReaderRef.current && videoRef.current) {
+            codeReaderRef.current.decodeFromVideoDevice(
+              null,
+              videoRef.current,
+              (result: Result | null, error: any) => {
+                if (result) {
+                  console.log("Barcode detected:", result.getText())
+                  onScan(result.getText())
+                  stopScanner()
+                }
+                if (error && error.name !== "NotFoundException") {
+                  console.error("Scanning error:", error)
+                }
+              },
+            )
+          }
         }
-      }
 
-      // Handle video errors
-      videoRef.current.onerror = (e) => {
-        console.error("Video error:", e)
-        setError("Video playback error")
-        setIsScanning(false)
+        // Handle video errors
+        videoRef.current.onerror = (e) => {
+          console.error("Video error:", e)
+          setError("Video playback error")
+          setIsScanning(false)
+        }
       }
     }
   }, [isScanning, onScan])

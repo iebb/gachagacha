@@ -23,11 +23,6 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       console.log("Starting scanner...");
       setError("");
       
-      if (!videoRef.current) {
-        setError("Video element not found");
-        return;
-      }
-
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setError("Camera access not supported in this browser");
@@ -45,41 +40,52 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
       console.log("Camera access granted, setting up video...");
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsScanning(true);
-        
-        // Wait for video to be ready
-        videoRef.current.onloadedmetadata = () => {
-          console.log("Video metadata loaded, starting scanner...");
+      // Set scanning state first, then set up video
+      setIsScanning(true);
+      
+      // Wait a bit for the video element to be rendered
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
           
-          // Create the code reader instance
-          codeReaderRef.current = new BrowserMultiFormatReader();
-          
-          if (codeReaderRef.current) {
-            codeReaderRef.current.decodeFromVideoDevice(
-              null,
-              videoRef.current!,
-              (result: Result | null, error: any) => {
-                if (result) {
-                  console.log("Barcode detected:", result.getText());
-                  onScan(result.getText());
-                  stopScanner();
-                }
-                if (error && error.name !== "NotFoundException") {
-                  console.error("Scanning error:", error);
-                }
-              },
-            );
-          }
-        };
+          // Wait for video to be ready
+          videoRef.current.onloadedmetadata = () => {
+            console.log("Video metadata loaded, starting scanner...");
+            
+            // Create the code reader instance
+            codeReaderRef.current = new BrowserMultiFormatReader();
+            
+            if (codeReaderRef.current) {
+              codeReaderRef.current.decodeFromVideoDevice(
+                null,
+                videoRef.current!,
+                (result: Result | null, error: any) => {
+                  if (result) {
+                    console.log("Barcode detected:", result.getText());
+                    onScan(result.getText());
+                    stopScanner();
+                  }
+                  if (error && error.name !== "NotFoundException") {
+                    console.error("Scanning error:", error);
+                  }
+                },
+              );
+            }
+          };
 
-        // Handle video errors
-        videoRef.current.onerror = (e) => {
-          console.error("Video error:", e);
-          setError("Video playback error");
-        };
-      }
+          // Handle video errors
+          videoRef.current.onerror = (e) => {
+            console.error("Video error:", e);
+            setError("Video playback error");
+          };
+        } else {
+          console.error("Video element still not found after timeout");
+          setError("Failed to initialize video element");
+          setIsScanning(false);
+          stream.getTracks().forEach(track => track.stop());
+        }
+      }, 100);
+      
     } catch (err) {
       console.error("Camera error:", err);
       if (err instanceof Error) {

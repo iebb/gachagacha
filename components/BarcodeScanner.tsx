@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Camera, X } from "lucide-react";
 import { BrowserMultiFormatReader, Result } from "@zxing/library";
 
@@ -10,15 +10,26 @@ interface BarcodeScannerProps {
 
 export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string>("");
-  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
 
+  // Cleanup on unmount
   useEffect(() => {
-    return () => stopScanner();
+    return () => {
+      if (codeReaderRef.current) {
+        codeReaderRef.current.reset();
+        codeReaderRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    };
   }, []);
 
-  const startScanner = async () => {
+  const startScanner = useCallback(async () => {
     try {
       console.log("Starting scanner...");
       setError("");
@@ -40,51 +51,49 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
       console.log("Camera access granted, setting up video...");
       
-      // Set scanning state first, then set up video
-      setIsScanning(true);
+      // Store stream reference
+      streamRef.current = stream;
       
-      // Wait a bit for the video element to be rendered
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setIsScanning(true);
+        
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          console.log("Video metadata loaded, starting scanner...");
           
-          // Wait for video to be ready
-          videoRef.current.onloadedmetadata = () => {
-            console.log("Video metadata loaded, starting scanner...");
-            
-            // Create the code reader instance
-            codeReaderRef.current = new BrowserMultiFormatReader();
-            
-            if (codeReaderRef.current) {
-              codeReaderRef.current.decodeFromVideoDevice(
-                null,
-                videoRef.current!,
-                (result: Result | null, error: any) => {
-                  if (result) {
-                    console.log("Barcode detected:", result.getText());
-                    onScan(result.getText());
-                    stopScanner();
-                  }
-                  if (error && error.name !== "NotFoundException") {
-                    console.error("Scanning error:", error);
-                  }
-                },
-              );
-            }
-          };
+          // Create the code reader instance
+          codeReaderRef.current = new BrowserMultiFormatReader();
+          
+          if (codeReaderRef.current && videoRef.current) {
+            codeReaderRef.current.decodeFromVideoDevice(
+              null,
+              videoRef.current,
+              (result: Result | null, error: any) => {
+                if (result) {
+                  console.log("Barcode detected:", result.getText());
+                  onScan(result.getText());
+                  stopScanner();
+                }
+                if (error && error.name !== "NotFoundException") {
+                  console.error("Scanning error:", error);
+                }
+              },
+            );
+          }
+        };
 
-          // Handle video errors
-          videoRef.current.onerror = (e) => {
-            console.error("Video error:", e);
-            setError("Video playback error");
-          };
-        } else {
-          console.error("Video element still not found after timeout");
-          setError("Failed to initialize video element");
+        // Handle video errors
+        videoRef.current.onerror = (e) => {
+          console.error("Video error:", e);
+          setError("Video playback error");
           setIsScanning(false);
-          stream.getTracks().forEach(track => track.stop());
-        }
-      }, 100);
+        };
+      } else {
+        console.error("Video element not found");
+        setError("Failed to initialize video element");
+        stream.getTracks().forEach(track => track.stop());
+      }
       
     } catch (err) {
       console.error("Camera error:", err);
@@ -102,25 +111,34 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
         setError("Failed to access camera. Please try again.");
       }
     }
-  };
+  }, [onScan]);
 
-  const stopScanner = () => {
+  const stopScanner = useCallback(() => {
     console.log("Stopping scanner...");
+    
     if (codeReaderRef.current) {
       codeReaderRef.current.reset();
       codeReaderRef.current = null;
     }
 
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => {
         track.stop();
         console.log("Stopped track:", track.kind);
       });
-      videoRef.current.srcObject = null;
-      setIsScanning(false);
+      streamRef.current = null;
     }
-  };
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
+    setIsScanning(false);
+  }, []);
+
+  const resetError = useCallback(() => {
+    setError("");
+  }, []);
 
   return (
     <div className="w-full">
@@ -131,7 +149,7 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
             <p className="text-sm">{error}</p>
           </div>
           <button 
-            onClick={() => setError("")} 
+            onClick={resetError} 
             className="btn-secondary text-sm"
           >
             Try Again

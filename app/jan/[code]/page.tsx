@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { MapPin } from "lucide-react";
 import ShopList from "../../../components/ShopList";
+import LocationStatus from "../../../components/LocationStatus";
 
 interface Shop {
   _id: string;
@@ -160,34 +160,13 @@ export default function JanCodePage() {
 
         {/* Location Status */}
         <div className="max-w-2xl mx-auto mb-4">
-          <div className="bg-white rounded-lg shadow-md p-3 sm:p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-700">
-                  {isGettingLocation ? "Getting your location..." : 
-                   userLocation ? "Location: Enabled" : 
-                   locationError ? "Location: Error" : "Location: Not set"}
-                </span>
-              </div>
-              {!userLocation && !isGettingLocation && (
-                <button
-                  onClick={getUserLocation}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  Enable Location
-                </button>
-              )}
-            </div>
-            {locationError && (
-              <p className="text-xs text-red-600 mt-1">{locationError}</p>
-            )}
-            {userLocation && (
-              <p className="text-xs text-green-600 mt-1">
-                Coordinates: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
-              </p>
-            )}
-          </div>
+          <LocationStatus
+            userLocation={userLocation}
+            locationError={locationError}
+            isGettingLocation={isGettingLocation}
+            onGetLocation={getUserLocation}
+            compact={true}
+          />
         </div>
 
         {/* Results */}

@@ -31,87 +31,90 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
   const startScanner = useCallback(async () => {
     try {
-      console.log("Starting scanner...");
-      setError("");
+      console.log("Starting scanner...")
+      setError("")
       
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setError("Camera access not supported in this browser");
-        return;
+        setError("Camera access not supported in this browser")
+        return
       }
 
-      console.log("Requesting camera access...");
+      console.log("Requesting camera access...")
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
-      });
+      })
 
-      console.log("Camera access granted, setting up video...");
+      console.log("Camera access granted, setting up video...")
       
       // Store stream reference
-      streamRef.current = stream;
+      streamRef.current = stream
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsScanning(true);
-        
-        // Wait for video to be ready
-        videoRef.current.onloadedmetadata = () => {
-          console.log("Video metadata loaded, starting scanner...");
-          
-          // Create the code reader instance
-          codeReaderRef.current = new BrowserMultiFormatReader();
-          
-          if (codeReaderRef.current && videoRef.current) {
-            codeReaderRef.current.decodeFromVideoDevice(
-              null,
-              videoRef.current,
-              (result: Result | null, error: any) => {
-                if (result) {
-                  console.log("Barcode detected:", result.getText());
-                  onScan(result.getText());
-                  stopScanner();
-                }
-                if (error && error.name !== "NotFoundException") {
-                  console.error("Scanning error:", error);
-                }
-              },
-            );
-          }
-        };
-
-        // Handle video errors
-        videoRef.current.onerror = (e) => {
-          console.error("Video error:", e);
-          setError("Video playback error");
-          setIsScanning(false);
-        };
-      } else {
-        console.error("Video element not found");
-        setError("Failed to initialize video element");
-        stream.getTracks().forEach(track => track.stop());
-      }
+      // Set scanning state first to render video element
+      setIsScanning(true)
       
     } catch (err) {
-      console.error("Camera error:", err);
+      console.error("Camera error:", err)
       if (err instanceof Error) {
         if (err.name === "NotAllowedError") {
-          setError("Camera access denied. Please allow camera access to scan barcodes.");
+          setError("Camera access denied. Please allow camera access to scan barcodes.")
         } else if (err.name === "NotFoundError") {
-          setError("No camera found on this device.");
+          setError("No camera found on this device.")
         } else if (err.name === "NotReadableError") {
-          setError("Camera is already in use by another application.");
+          setError("Camera is already in use by another application.")
         } else {
-          setError(`Camera error: ${err.message}`);
+          setError(`Camera error: ${err.message}`)
         }
       } else {
-        setError("Failed to access camera. Please try again.");
+        setError("Failed to access camera. Please try again.")
       }
     }
-  }, [onScan]);
+  }, [])
+
+  // Setup video and scanner after isScanning changes
+  useEffect(() => {
+    if (isScanning && streamRef.current && videoRef.current) {
+      console.log("Setting up video and scanner...")
+      
+      videoRef.current.srcObject = streamRef.current
+      
+      // Wait for video to be ready
+      videoRef.current.onloadedmetadata = () => {
+        console.log("Video metadata loaded, starting scanner...")
+        
+        // Create the code reader instance
+        codeReaderRef.current = new BrowserMultiFormatReader()
+        
+        if (codeReaderRef.current && videoRef.current) {
+          codeReaderRef.current.decodeFromVideoDevice(
+            null,
+            videoRef.current,
+            (result: Result | null, error: any) => {
+              if (result) {
+                console.log("Barcode detected:", result.getText())
+                onScan(result.getText())
+                stopScanner()
+              }
+              if (error && error.name !== "NotFoundException") {
+                console.error("Scanning error:", error)
+              }
+            },
+          )
+        }
+      }
+
+      // Handle video errors
+      videoRef.current.onerror = (e) => {
+        console.error("Video error:", e)
+        setError("Video playback error")
+        setIsScanning(false)
+      }
+    }
+  }, [isScanning, onScan])
 
   const stopScanner = useCallback(() => {
     console.log("Stopping scanner...");
@@ -197,6 +200,8 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           </button>
         </div>
       )}
+
+
 
       {isScanning && (
         <div className="mt-3 sm:mt-4 text-center">

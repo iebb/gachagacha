@@ -46,13 +46,22 @@ export default function JanCodePage() {
   useEffect(() => {
     if (params.code && typeof params.code === "string") {
       setBarcode(params.code);
-      searchShops(params.code);
+      // Only search when we have location (either from URL or obtained)
+      if (userLocation !== null) {
+        searchShops(params.code);
+      }
     }
   }, [params.code, userLocation]);
 
   const getUserLocation = () => {
     if (!navigator.geolocation) {
       setLocationError("Geolocation is not supported by this browser.");
+      // Use URL parameters as fallback if available
+      const lat = searchParams.get('lat');
+      const lng = searchParams.get('lng');
+      if (lat && lng) {
+        setUserLocation({ lat: parseFloat(lat), lng: parseFloat(lng) });
+      }
       return;
     }
 
@@ -83,6 +92,13 @@ export default function JanCodePage() {
             break;
         }
         console.error("Location error:", error);
+        
+        // Use URL parameters as fallback if available
+        const lat = searchParams.get('lat');
+        const lng = searchParams.get('lng');
+        if (lat && lng) {
+          setUserLocation({ lat: parseFloat(lat), lng: parseFloat(lng) });
+        }
       },
       {
         enableHighAccuracy: true,
@@ -174,20 +190,15 @@ export default function JanCodePage() {
           </div>
         </div>
 
-        {/* JAN Code Display */}
-        <div className="max-w-2xl mx-auto mb-6 sm:mb-8">
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 text-center">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-              JAN Code
-            </h2>
-            <p className="text-2xl sm:text-3xl font-mono font-bold text-primary-600">
-              {barcode}
-            </p>
-          </div>
-        </div>
-
         {/* Results */}
-        {isLoading && (
+        {isGettingLocation && (
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <p className="mt-2 text-gray-600">Getting your location...</p>
+          </div>
+        )}
+
+        {!isGettingLocation && isLoading && (
           <div className="text-center py-8">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             <p className="mt-2 text-gray-600">Searching for shops...</p>
@@ -213,7 +224,13 @@ export default function JanCodePage() {
           </div>
         )}
 
-        {!isLoading && !error && shops.length === 0 && barcode && (
+        {!isGettingLocation && !isLoading && !error && shops.length === 0 && barcode && userLocation === null && (
+          <div className="max-w-2xl mx-auto text-center py-8">
+            <p className="text-gray-600">Waiting for location to search for shops...</p>
+          </div>
+        )}
+
+        {!isGettingLocation && !isLoading && !error && shops.length === 0 && barcode && userLocation !== null && (
           <div className="max-w-2xl mx-auto text-center py-8">
             <p className="text-gray-600">No shops found for this JAN code.</p>
           </div>

@@ -80,7 +80,10 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     if (isScanning && streamRef.current && videoRef.current) {
       console.log("Setting up video and scanner...")
       
-      videoRef.current.srcObject = streamRef.current
+      // Only set srcObject if it's not already set
+      if (!videoRef.current.srcObject) {
+        videoRef.current.srcObject = streamRef.current
+      }
       
       // Wait for video to be ready
       videoRef.current.onloadedmetadata = () => {
